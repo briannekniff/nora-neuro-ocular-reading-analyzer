@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NORA | Neuro-Ocular Reading Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+  <style>
+    :root {
+      --navy: #081a3a;
+      --navy-2: #0d2859;
+      --blue: #2f6bff;
+      --blue-2: #7ea7ff;
+      --blue-soft: #edf3ff;
+      --white: #ffffff;
+      --text: #16233d;
+      --muted: #5d6d8a;
+      --border: #d9e4f7;
+      --green: #1e9a5e;
+      --red: #d75151;
+      --gold: #f3be46;
+      --shadow: 0 18px 40px rgba(7, 20, 53, 0.18);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(47,107,255,0.14), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(255,255,255,0.08), transparent 20%),
+        linear-gradient(135deg, var(--navy), #06142f 72%);
+    }
+
+    body {
+      padding: 22px;
+    }
+
+    .app {
+      min-height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 22px;
+    }
+
+    .sidebar {
+      background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      color: white;
+      padding: 22px 20px;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 22px;
+      align-self: start;
+      max-height: calc(100vh - 44px);
+      overflow: auto;
+    }
+
+    .logo-card {
+      text-align: center;
+      padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.12);
+      margin-bottom: 18px;
+    }
+
+    .logo-card img {
+      width: 158px;
+      max-width: 100%;
+      display: block;
+      margin: 0 auto 10px;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,0.16));
+    }
+
+    .logo-fallback {
+      width: 158px;
+      height: 96px;
+      margin: 0 auto 10px;
+      display: none;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      font-size: 2rem;
+      letter-spacing: 1px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #0d2859, #2f6bff);
+    }
+
+    .logo-card h1 {
+      margin: 0 0 4px;
+      font-size: 1.5rem;
+      letter-spacing: 0.4px;
+    }
+
+    .logo-card p {
+      margin: 0;
+      color: rgba(255,255,255,0.84);
+      font-size: 0.94rem;
+      line-height: 1.45;
+    }
+
+    .side-label {
+      margin: 18px 0 10px;
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: rgba(255,255,255,0.72);
+      font-weight: 800;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .step-item {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.86);
+      transition: 0.2s ease;
+    }
+
+    .step-item.active {
+      background: rgba(126,167,255,0.18);
+      border-color: rgba(126,167,255,0.45);
+      transform: translateX(2px);
+    }
+
+    .step-item.done {
+      background: rgba(30,154,94,0.14);
+      border-color: rgba(30,154,94,0.34);
+    }
+
+    .step-num {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.15);
+      font-weight: 900;
+    }
+
+    .step-item.active .step-num {
+      background: linear-gradient(135deg, var(--blue-2), var(--blue));
+    }
+
+    .step-item.done .step-num {
+      background: linear-gradient(135deg, #48c97f, var(--green));
+    }
+
+    .step-name {
+      font-size: 0.95rem;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .side-note {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.8);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+
+    .main {
+      min-width: 0;
+    }
+
+    .panel {
+      background: white;
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.54);
+      min-height: calc(100vh - 44px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .topbar {
+      background: linear-gradient(180deg, #f7faff, #ffffff);
+      border-bottom: 1px solid #edf2fb;
+      padding: 22px 28px 0;
+    }
+
+    .topbar-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 1.7rem;
+    }
+
+    .page-chip {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--navy);
+      font-weight: 800;
+      font-size: 0.94rem;
+    }
+
+    .progress {
+      width: 100%;
+      height: 12px;
+      background: #e7eefc;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 10%;
+      background: linear-gradient(90deg, var(--blue), #8fb3ff);
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+
+    .content {
+      padding: 28px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.75;
+      max-width: 940px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .card,
+    .notice,
+    .alert,
+    .choice-card,
+    .question-box,
+    .camera-card,
+    .score-card,
+    .summary-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: #fbfdff;
+    }
+
+    .card,
+    .notice,
+    .alert,
+    .question-box,
+    .camera-card,
+    .score-card,
+    .summary-card {
+      padding: 20px;
+    }
+
+    .card h3,
+    .question-box h3,
+    .camera-card h3,
+    .summary-card h3 {
+      margin: 0 0 8px;
+      color: var(--navy);
+      font-size: 1.15rem;
+    }
+
+    .card p,
+    .summary-card p {
+      margin: 0;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .step-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+    }
+
+    .step-card strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--navy);
+    }
+
+    .notice {
+      background: linear-gradient(180deg, #edf4ff, #fbfdff);
+      border-left: 5px solid var(--blue);
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    .alert {
+      background: #fff5f5;
+      border-left: 5px solid var(--red);
+      color: #742424;
+      font-weight: 700;
+    }
+
+    .notice strong,
+    .alert strong {
+      color: inherit;
+    }
+
+    .link-btn {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--blue), #7da8ff);
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 26px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 20px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--blue), #7da8ff);
+      color: white;
+      box-shadow: 0 10px 20px rgba(47,107,255,0.25);
+    }
+
+    .btn.primary:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn.secondary {
+      background: #eef3fb;
+      color: var(--navy);
+    }
+
+    .btn.secondary:hover {
+      background: #e2ebfb;
+    }
+
+    .btn:disabled {
+      background: #cdd8ee;
+      color: #7485a8;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .choice-card {
+      padding: 18px;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .choice-card:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(47,107,255,0.12);
+    }
+
+    .choice-card.active {
+      border-color: var(--blue);
+      background: #f2f7ff;
+      box-shadow: 0 10px 20px rgba(47,107,255,0.16);
+    }
+
+    .choice-card strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--navy);
+    }
+
+    .choice-card span {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.94rem;
+    }
+
+    .camera-layout {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .camera-card {
+      text-align: center;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 16px;
+      background: #000;
+      display: block;
+      min-height: 180px;
+      object-fit: cover;
+    }
+
+    .camera-icon {
+      width: 100%;
+      min-height: 180px;
+      display: none;
+      place-items: center;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #f7fbff, #eef4ff);
+      color: var(--navy);
+      font-size: 4rem;
+      border: 2px dashed #aec7ff;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-weight: 800;
+    }
+
+    .status.waiting { color: var(--red); }
+    .status.ready { color: var(--green); }
+
+    .reading-screen {
+     position: fixed;
+     inset: 0;
+    background: white;
+    color: black;
+    padding: 34px 46px;
+    display: flex;
+    flex-direction: column;
+    z-index: 9999;
+    overflow-y: auto;
+    }
+
+    .reading-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .reading-title {
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: var(--navy);
+    }
+
+    .timer {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--navy);
+      background: var(--blue-soft);
+      padding: 10px 14px;
+      border-radius: 999px;
+    }
+
+    .reading-text {
+        font-size: 1.48rem;
+        line-height: 2.05;
+        max-width: 980px;
+        margin: 0 auto;
+        white-space: pre-line;
+        padding-bottom: 40px;
+    }
+
+    .reading-actions {
+      text-align: center;
+      margin-top: 28px;
+    }
+
+    .question-count {
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .question-box h3 {
+      margin-bottom: 14px;
+    }
+
+    .answer-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .answer-card {
+      padding: 14px 15px;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .answer-card:hover {
+      border-color: var(--blue);
+      transform: translateY(-1px);
+    }
+
+    .answer-card.selected {
+      border-color: var(--blue);
+      background: #eef4ff;
+      box-shadow: 0 10px 18px rgba(47,107,255,0.12);
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .score-card {
+      text-align: center;
+      background: linear-gradient(180deg, #f4f8ff, #ffffff);
+    }
+
+    .score-value {
+      font-size: 4rem;
+      line-height: 1;
+      font-weight: 900;
+      color: var(--blue);
+      margin-top: 6px;
+    }
+
+    .score-label {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--navy);
+      margin-top: 8px;
+    }
+
+    .result-bar {
+      height: 12px;
+      border-radius: 999px;
+      background: #e5edff;
+      margin: 18px 0;
+      overflow: hidden;
+    }
+
+    .result-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), #8ab0ff);
+    }
+
+    .summary-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .summary-card p {
+      margin-top: 6px;
+    }
+
+    .save-status {
+      margin-top: 12px;
+      font-size: 0.92rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: static;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .grid-2,
+      .camera-layout,
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+      .reading-screen {
+        padding: 20px;
+      }
+      .reading-text {
+        font-size: 1.18rem;
+        line-height: 1.85;
+      }
+    }
+
+    @media (max-width: 620px) {
+      body {
+        padding: 12px;
+      }
+      .content,
+      .topbar {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+      .nav-buttons {
+        flex-direction: column-reverse;
+      }
+      .nav-buttons .btn {
+        width: 100%;
+      }
+      .score-value {
+        font-size: 3.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo-card">
+        <img src="nora-logo.png" alt="NORA logo" onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='grid';">
+        <div id="logoFallback" class="logo-fallback">NORA</div>
+        <h1>NORA</h1>
+        <p>Neuro-Ocular Reading Analyzer</p>
+      </div>
+
+      <div class="side-label">Progress</div>
+      <div class="step-list" id="stepList"></div>
+
+      <div class="side-note">
+        A classroom-friendly screening prototype designed to flag possible early indicators of reading difficulty using face and reading behavior setup, reading time, comprehension, and self-analysis.
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="panel">
+        <div class="topbar">
+          <div class="topbar-row">
+            <h2 id="pageTitle">Welcome</h2>
+            <div class="page-chip" id="pageChip">Step 1 of 10</div>
+          </div>
+          <div class="progress">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="content" id="appContent"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const supabaseClient = window.supabase.createClient(
+      "https://zoffzghxvxjzudyiyldk.supabase.co",
+      "sb_publishable_vak0_IZ0s3lLHD5PzwU8Iw_6xFE2D9u"
+    );
+
+    const steps = [
+      "Welcome",
+      "Permission & Ethics",
+      "What is Dyslexia?",
+      "Why Early Identification Matters",
+      "Your Profile",
+      "Face & Eye Setup",
+      "Reading Instructions",
+      "Comprehension",
+      "Self Analysis",
+      "Results"
+    ];
+
+    const ageOptions = [
+      {
+        id: "1-3",
+        title: "Grades 1–3",
+        desc: "Early elementary reading level with much simpler vocabulary and shorter sentences."
+      },
+      {
+        id: "4-6",
+        title: "Grades 4–6",
+        desc: "Junior reading level with more detail, stronger vocabulary, and longer sentence structure."
+      },
+      {
+        id: "7-9",
+        title: "Grades 7–9",
+        desc: "Intermediate reading level with denser ideas, layered meaning, and more academic language."
+      },
+      {
+        id: "10-12",
+        title: "Grades 10–12",
+        desc: "Secondary reading level with advanced vocabulary, abstract thinking, and more complex syntax."
+      }
+    ];
+
+    const diagnosisOptions = [
+      "Yes",
+      "No",
+      "Unsure / Prefer not to say"
+    ];
+
+    const passages = {
+      "1-3": {
+        title: "Liam and the New Book",
+        expectedTime: 80,
+        text: `Liam liked books.
+One day, he found a new book on the classroom shelf.
+It had bright pictures on the front.
+He smiled and ran to Mia.
+
+"Look!" Liam said. "A new book!"
+"Let’s read it together," Mia said.
+
+They sat under a tree.
+They opened the book very carefully.
+It was about a clever fox.
+
+Liam read the words one by one.
+Some words were easy.
+Some words were hard.
+When he got stuck, Mia helped him.
+
+They kept reading.
+Liam went back and read some lines again.
+He wanted to understand the story.
+
+At the end, Liam smiled.
+"I read new words today," he said.
+Mia smiled too.
+"You are getting better every day," she said.
+
+Liam felt proud.
+He could not wait to read another book tomorrow.`
+      },
+      "4-6": {
+        title: "Liam and the Challenging Library Book",
+        expectedTime: 120,
+        text: `Liam had developed a growing passion for reading, especially books that challenged him beyond the ordinary.
+One cloudy afternoon in the library, he found a new volume that seemed older than the others, its spine creased and pages slightly yellowed, brimming with words he had not encountered before.
+He hurried to Mia. "This book looks hard, but I want to try it. Will you read it with me?"
+Together, they settled in a quiet corner and began the first chapter, which described a young scientist experimenting with machines that could move and respond to their environment.
+Liam read carefully, sounding out unfamiliar words like mechanism, prototype, and experiment.
+Mia helped him understand the meaning of each word in context, guiding him through longer, more complex sentences.
+The story included observations, diagrams, and questions that required Liam to pause and think.
+Sometimes he had to reread lines to understand the author’s ideas fully.
+They discussed the story as they read, making predictions and connecting new information to things they already knew.
+By the end of the chapter, Liam realized how much he had learned—not just words, but how to think carefully, follow complex ideas, and remember details.
+"Reading like this makes me feel smarter," he said.
+Mia agreed. "Every challenging book teaches us something important about how to understand the world."
+They planned to continue the story the next day, knowing that each new chapter would improve their reading, comprehension, and confidence.`
+      },
+      "7-9": {
+        title: "Liam and the Book of Innovators",
+        expectedTime: 145,
+        text: `Liam had always enjoyed reading, but lately he sought books that tested not only his vocabulary but also his ability to follow intricate ideas.
+He browsed the library, searching for volumes that combined narrative, description, and explanation in ways that would challenge him intellectually.
+Finally, he discovered a substantial book about innovators and scientists whose discoveries had reshaped the world.
+The language was precise, often unfamiliar, and the sentences long, requiring careful attention to syntax and meaning.
+Excited, he brought the book to Mia.
+"This is difficult, but I think we can understand it together," he said.
+They found a quiet corner and opened the first chapter.
+It described an inventor designing an intricate mechanical device, explaining principles of motion, energy, and design.
+Liam carefully pronounced words like oscillation, equilibrium, and prototype, pausing when sentences grew complex.
+Mia assisted when syntactic density or uncommon terms threatened comprehension.
+As they read, they annotated the margins, discussed ideas, and connected concepts to other knowledge.
+The text required them to reread sentences to capture nuance and meaning, and to reflect on cause-and-effect relationships.
+By the chapter’s end, Liam understood far more than the words themselves.
+He had learned strategies for decoding dense text, retaining information, and analyzing ideas critically.
+Mia smiled. "Advanced reading is not just about finishing the page—it’s about thinking deeply, noticing details, and understanding the author’s meaning."
+They planned to continue reading in sessions, aware that each challenging passage would further improve their comprehension, analytical thinking, and vocabulary.`
+      },
+      "10-12": {
+        title: "Liam and the Demanding Text",
+        expectedTime: 175,
+        text: `Liam had long cultivated a profound fascination for reading, not merely as an amusement, but as an exercise in intellectual rigor, a means to explore ideas that transcended the familiar boundaries of his everyday experience.
+On a damp, overcast afternoon, he stumbled upon a tome of considerable heft and antiquated binding, its pages yellowed and fragrant with the faint musk of age, nestled obscurely among the more modern volumes in the library.
+The text promised an intricate exposition of human innovation, tracing the endeavors of inventors and natural philosophers whose discoveries had reshaped the world, often against the prevailing tide of ignorance and skepticism.
+With a mixture of anticipation and trepidation, Liam conveyed his find to Mia, whose own predilection for erudition equaled his.
+"Let us examine it together," she proposed, her voice tinged with curiosity and determination, "for it appears a formidable challenge, yet one worthy of our attention."
+They settled in a secluded corner, the hush of the library amplifying the resonance of their whispered commentary as they embarked upon the initial chapter.
+Here, the author delineated the labyrinthine mechanisms by which early engineers conceived and executed inventions, employing terminology replete with precise yet uncommon diction: pneumatics, oscillation, equilibrium, kinematics.
+Liam pronounced each word meticulously, pausing to infer meaning from context, while Mia offered guidance when syntactic density threatened comprehension.
+As they progressed, the narrative interwove anecdotal digressions with analytical argumentation, demanding sustained attention and reflection.
+They annotated margins, questioned assumptions, and reconstructed the logical sequence of events that the author implied but rarely stated explicitly.
+By the chapter’s conclusion, Liam perceived the profundity of what he had absorbed: not merely the acquisition of novel vocabulary, but the cultivation of analytical acumen, patience, and the capacity to navigate ambiguity.
+"Reading," he murmured, "is not simply the act of deciphering symbols, but the deliberate engagement with ideas whose complexity tests the mind and refines understanding."
+Mia nodded gravely, recognizing in the quiet triumph of comprehension a lesson beyond the text: that intellectual growth demands both perseverance and an appreciation for the intricacies of language itself.`
+      }
+    };
+
+    const comprehensionBank = {
+      "1-3": [
+        { q: "Where did Liam find the book?", options: ["At home", "On the classroom shelf", "In a car", "In a box"], answer: 1 },
+        { q: "Who did Liam show the book to?", options: ["Mia", "His teacher", "A fox", "His brother"], answer: 0 },
+        { q: "Where did Liam and Mia sit?", options: ["Under a tree", "In a bus", "In a gym", "By a door"], answer: 0 },
+        { q: "What was the book about?", options: ["A dog", "A clever fox", "A teacher", "A storm"], answer: 1 },
+        { q: "What did Mia do when Liam got stuck?", options: ["She left", "She closed the book", "She helped him", "She laughed"], answer: 2 },
+        { q: "Why did Liam reread some lines?", options: ["To understand the story", "To make Mia wait", "To skip words", "To go home"], answer: 0 },
+        { q: "How did Liam feel at the end?", options: ["Proud", "Angry", "Sad", "Scared"], answer: 0 },
+        { q: "What did Mia say to Liam?", options: ["Stop reading", "You are getting better every day", "Go home now", "This is too easy"], answer: 1 },
+        { q: "What did Liam want to do tomorrow?", options: ["Draw a fox", "Climb a tree", "Read another book", "Go to sleep"], answer: 2 },
+        { q: "What helped Liam while reading?", options: ["A timer", "Music", "Mia’s help and practice", "Pictures only"], answer: 2 },
+        { q: "What does this story show about Liam?", options: ["He improves when he keeps trying", "He dislikes books", "He wants to stop learning", "He never asks for help"], answer: 0 },
+        { q: "Why is Mia important in the story?", options: ["She helps Liam learn", "She hides the book", "She changes the story", "She grades him"], answer: 0 },
+        { q: "What is a message of the passage?", options: ["Reading gets better with help and practice", "Reading should always be fast", "Hard words should be ignored", "Books are only for school"], answer: 0 },
+        { q: "Why did Liam smile at the end?", options: ["He was proud of his reading", "He wanted lunch", "He finished drawing", "He found a toy"], answer: 0 },
+        { q: "How would you describe Liam’s progress?", options: ["He became more confident", "He stayed the same", "He gave up quickly", "He got more confused"], answer: 0 }
+      ],
+      "4-6": [
+        { q: "Where did Liam find the difficult book?", options: ["At home", "In the library", "At a store", "In a locker"], answer: 1 },
+        { q: "What was the first chapter about?", options: ["A scientist and machines", "A sports team", "A kitchen", "A weather map"], answer: 0 },
+        { q: "Which was one unfamiliar word Liam read?", options: ["Prototype", "Backpack", "Holiday", "Window"], answer: 0 },
+        { q: "Who helped Liam understand hard words?", options: ["His teacher", "Mia", "The librarian", "No one"], answer: 1 },
+        { q: "What else was included in the story?", options: ["Observations, diagrams, and questions", "Poems and songs", "Maps only", "Recipes"], answer: 0 },
+        { q: "Why did Liam reread some lines?", options: ["To understand the author’s ideas", "To waste time", "To go slower for Mia", "To skip details"], answer: 0 },
+        { q: "What did Liam and Mia do while reading?", options: ["Made predictions and discussed the story", "Ignored the details", "Argued about the book", "Stopped after one page"], answer: 0 },
+        { q: "What did Liam learn besides words?", options: ["How to think carefully and follow complex ideas", "How to draw a machine", "How to fix shelves", "How to write a song"], answer: 0 },
+        { q: "What did Liam say about this kind of reading?", options: ["It makes me feel smarter", "It makes me tired only", "It is not worth it", "It is always boring"], answer: 0 },
+        { q: "What did Mia say challenging books teach?", options: ["Something important about understanding the world", "How to avoid libraries", "How to read faster", "How to copy answers"], answer: 0 },
+        { q: "Why is the old-looking book important?", options: ["It represents a bigger challenge and new learning", "It is the only book there", "It is broken", "It belongs to the principal"], answer: 0 },
+        { q: "What does Liam’s choice reveal?", options: ["He wants to grow as a reader", "He dislikes challenges", "He wants Mia to do the work", "He only likes easy books"], answer: 0 },
+        { q: "What reading skill is emphasized?", options: ["Using context and discussion to understand text", "Skipping hard words", "Reading without thinking", "Memorizing the cover"], answer: 0 },
+        { q: "What is one major theme?", options: ["Learning is helped by effort and support", "Reading should be done alone", "Books are better when short", "Hard words should be ignored"], answer: 0 },
+        { q: "How is Mia presented in the story?", options: ["As a helpful learning partner", "As a distraction", "As a strict examiner", "As someone who dislikes books"], answer: 0 }
+      ],
+      "7-9": [
+        { q: "What kind of book did Liam find?", options: ["A book about innovators and scientists", "A joke book", "A picture-only book", "A travel guide"], answer: 0 },
+        { q: "Why was the language challenging?", options: ["It was too short", "It required careful attention to syntax and meaning", "It had no punctuation", "It was written in rhyme"], answer: 1 },
+        { q: "Who helped Liam when terms became difficult?", options: ["His teacher", "Mia", "The librarian", "No one"], answer: 1 },
+        { q: "Which word appeared as a difficult example?", options: ["Equilibrium", "Basketball", "Holiday", "Pencil"], answer: 0 },
+        { q: "What did Liam and Mia do in the margins?", options: ["Annotated ideas", "Covered words", "Drew cartoons", "Counted letters"], answer: 0 },
+        { q: "Why did Liam reread some sentences?", options: ["To capture nuance and meaning", "To avoid discussion", "To waste time", "To memorize the title"], answer: 0 },
+        { q: "What relationships did the text ask them to reflect on?", options: ["Cause and effect", "Friendship only", "Family history", "Poetry rhythm"], answer: 0 },
+        { q: "What did Liam gain by the end?", options: ["Only new words", "Strategies for dense text and analysis", "A machine design", "A library pass"], answer: 1 },
+        { q: "What did Mia say advanced reading is about?", options: ["Finishing quickly", "Thinking deeply and noticing details", "Reading out loud only", "Memorizing every sentence"], answer: 1 },
+        { q: "Why would continuing the book help?", options: ["Each passage would build comprehension and analytical thinking", "It would make the library quieter", "It would shorten the chapters", "It would remove hard words"], answer: 0 },
+        { q: "What does the book symbolize for Liam?", options: ["An intellectual challenge that supports growth", "A punishment", "A decoration", "A burden to avoid"], answer: 0 },
+        { q: "How is comprehension shown in the passage?", options: ["As active analysis and reflection", "As passive memorization", "As copying definitions", "As speed reading"], answer: 0 },
+        { q: "What can be inferred about Liam’s attitude toward difficulty?", options: ["He sees difficulty as part of learning", "He avoids it whenever possible", "He stops immediately", "He dislikes deep thinking"], answer: 0 },
+        { q: "What role does Mia play?", options: ["She supports higher-level comprehension", "She replaces the author", "She increases confusion", "She removes all challenge"], answer: 0 },
+        { q: "Which statement best captures a theme?", options: ["Reading growth comes from engaging with challenging ideas", "Fast reading matters most", "Vocabulary is the only important skill", "Complex texts are never useful"], answer: 0 }
+      ],
+      "10-12": [
+        { q: "How is reading described at the start?", options: ["As a simple hobby only", "As an exercise in intellectual rigor", "As a school rule", "As a social competition"], answer: 1 },
+        { q: "Where did Liam find the book?", options: ["In the library among modern volumes", "On a café table", "In a science lab", "At home"], answer: 0 },
+        { q: "What did the text trace?", options: ["Human innovation and the work of inventors", "Animal migration", "A family history", "Poetry styles"], answer: 0 },
+        { q: "Which word appeared in the advanced terminology list?", options: ["Kinematics", "Notebook", "Afternoon", "Backpack"], answer: 0 },
+        { q: "What did Mia offer when syntactic density threatened comprehension?", options: ["Guidance", "Silence", "A new book", "A summary sheet"], answer: 0 },
+        { q: "What kind of structure did the narrative interweave?", options: ["Anecdotal digressions and analytical argumentation", "Songs and recipes", "Lists and riddles", "Pictures and captions"], answer: 0 },
+        { q: "What did Liam and Mia reconstruct?", options: ["The logical sequence of events", "The cover design", "The library map", "A biography"], answer: 0 },
+        { q: "What did Liam gain beyond vocabulary?", options: ["Analytical acumen, patience, and capacity for ambiguity", "Only faster pronunciation", "A new desk", "A memorized glossary"], answer: 0 },
+        { q: "How did Liam define reading?", options: ["Deliberate engagement with complex ideas", "A race to the last page", "Entertainment only", "A way to avoid work"], answer: 0 },
+        { q: "What lesson did Mia recognize?", options: ["Intellectual growth demands perseverance and appreciation for language", "Books should be shorter", "Difficult texts are pointless", "Discussion is unnecessary"], answer: 0 },
+        { q: "What does the antiquated book likely symbolize?", options: ["A demanding doorway into deeper intellectual challenge", "A broken item", "A meaningless object", "A reminder to read less"], answer: 0 },
+        { q: "How does the passage portray strong reading?", options: ["As careful reasoning through complexity and structure", "As pronouncing words correctly only", "As speed reading", "As memorizing rare vocabulary"], answer: 0 },
+        { q: "Why is the tone significant?", options: ["It reinforces the seriousness and depth of the experience", "It makes the text humorous", "It simplifies every idea", "It removes all challenge"], answer: 0 },
+        { q: "What can be inferred about Liam’s development?", options: ["He is becoming more reflective and analytical", "He no longer values reading", "He wants easier books only", "He reads without thinking"], answer: 0 },
+        { q: "Which statement best captures the central message?", options: ["Complex reading strengthens thought through persistence and deep engagement", "Reading should always feel effortless", "Old books have little value", "Vocabulary matters more than understanding"], answer: 0 }
+      ]
+    };
+
+    const selfQuestions = [
+      { text: "I found this reading easy.", reverse: true },
+      { text: "I had to reread parts of the text.", reverse: false },
+      { text: "I lost my place while reading.", reverse: false },
+      { text: "I felt confident while reading.", reverse: true },
+      { text: "I struggled with unfamiliar words.", reverse: false },
+      { text: "I understood the story clearly.", reverse: true },
+      { text: "I found myself guessing words.", reverse: false },
+      { text: "I needed to slow down to understand.", reverse: false },
+      { text: "I felt comfortable reading this level.", reverse: true },
+      { text: "I had difficulty focusing on the text.", reverse: false },
+      { text: "I understood the meaning of most sentences.", reverse: true },
+      { text: "I skipped over words.", reverse: false },
+      { text: "I felt frustrated while reading.", reverse: false },
+      { text: "I could follow the story easily.", reverse: true },
+      { text: "I felt in control while reading.", reverse: true }
+    ];
+
+    const selfOptions = [
+      "Strongly Agree",
+      "Agree",
+      "Neutral",
+      "Disagree",
+      "Strongly Disagree"
+    ];
+
+    let currentStep = 0;
+    let selectedAge = "";
+    let selectedDiagnosis = "";
+    let readingStartTime = null;
+    let readingTimeSeconds = 0;
+    let readingTimerInterval = null;
+    let cameraStream = null;
+    let cameraReady = false;
+    let webgazerStarted = false;
+    let gazeSamples = [];
+    let comprehensionAnswers = [];
+    let selfAnswers = [];
+    let compIndex = 0;
+    let selfIndex = 0;
+    let saveStatusMessage = "Preparing result summary…";
+    let readingBlurCount = 0;
+
+    function updateSidebar() {
+      const list = document.getElementById("stepList");
+      list.innerHTML = "";
+
+      steps.forEach((name, i) => {
+        const item = document.createElement("div");
+        item.className = "step-item";
+        if (i === currentStep) item.classList.add("active");
+        if (i < currentStep) item.classList.add("done");
+
+        item.innerHTML = `
+          <div class="step-num">${i < currentStep ? "✓" : i + 1}</div>
+          <div class="step-name">${name}</div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function updateTopbar() {
+      document.getElementById("pageTitle").textContent = steps[currentStep];
+      document.getElementById("pageChip").textContent = `Step ${currentStep + 1} of ${steps.length}`;
+      document.getElementById("progressFill").style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+    }
+
+    function goToStep(step) {
+      currentStep = step;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function nextStep() {
+      if (currentStep < steps.length - 1) {
+        currentStep++;
+        render();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        render();
+      }
+    }
+
+    function renderWelcome() {
+      return `
+        <p class="lead">
+          Welcome to <strong>NORA (Neuro-Ocular Reading Analyzer)</strong>.
+          This program was developed to support early identification of reading challenges through a combination of face and eye setup, reading time, comprehension, and self-analysis.
+        </p>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <strong>Face & Eye Setup</strong>
+            NORA prepares the reading experience and checks camera readiness.
+          </div>
+          <div class="step-card">
+            <strong>Reading Activity</strong>
+            You will read a short passage matched to your selected age group.
+          </div>
+          <div class="step-card">
+            <strong>Comprehension</strong>
+            You will answer 15 multiple-choice questions about the passage.
+          </div>
+          <div class="step-card">
+            <strong>Self Analysis</strong>
+            You will reflect on your reading experience honestly. There are no wrong answers.
+          </div>
+        </div>
+
+        <div class="nav-buttons">
+          <div></div>
+          <button class="btn primary" onclick="nextStep()">Continue</button>
+        </div>
+      `;
+    }
+
+    function renderEthics() {
+      return `
+        <p class="lead">
+          This research project follows the guidelines for <strong>Low Risk Human Testing</strong> by Youth Science Canada and is approved for classroom administration by the <strong>Simcoe Muskoka Catholic District School Board</strong>.
+        </p>
+
+        <p class="lead">
+          This project gathers information such as ocular reading indicators, reading time for a short passage, comprehension responses, and a short self-analysis.
+          All information remains entirely anonymous and participation is optional. Participation can be stopped at any point throughout completion.
+        </p>
+
+        <div class="alert">
+          This is a screening tool and is <strong>not</strong> a medical diagnosis.
+        </div>
+
+        <p class="lead">
+          If you are under the age of 18, please ensure the following permission form is completed.
+        </p>
+
+        <a class="link-btn" href="https://docs.google.com/document/d/1WtfFGiYrRNWM9KXgiU9sawhDs6u2VKZyhExtj_14Gf4/edit" target="_blank" rel="noopener noreferrer">
+          Guardian Permission Form
+        </a>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevStep()">Back</button>
+          <button class="btn primary" onclick="nextStep()">Continue</button>
+        </div>
+      `;
+    }
+
+    function renderDyslexia() {
+      return `
+        <p class="lead">
+          Dyslexia is a learning difference that affects how the brain processes written language.
+          It can make reading slower, more effortful, and sometimes less accurate.
+        </p>
+
+        <p class="lead">
+          Individuals with dyslexia may have difficulty recognizing words quickly, tracking lines of text, sounding out unfamiliar words, or understanding text with ease.
+          Dyslexia does not reflect intelligence. With the right support and intervention, strong reading growth is possible.
+        </p>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevStep()">Back</button>
+          <button class="btn primary" onclick="nextStep()">Continue</button>
+        </div>
+      `;
+    }
+
+    function renderEarlyIdentification() {
+      return `
+        <p class="lead">
+          Reading difficulties are often identified later than they should be.
+          When support is delayed, students may experience frustration, reduced confidence, and gaps in learning that become harder to close over time.
+        </p>
+
+        <p class="lead">
+          Early screening allows students to receive support sooner, develop effective learning strategies, and build stronger reading foundations.
+        </p>
+
+        <p class="lead">
+          Research suggests that early intervention can support the development of neural pathways involved in reading, helping students improve both accuracy and confidence.
+        </p>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevStep()">Back</button>
+          <button class="btn primary" onclick="nextStep()">Continue</button>
+        </div>
+      `;
+    }
+
+    function renderProfile() {
+      return `
+        <p class="lead">
+          Select the grade group that best matches the student’s reading level. NORA will show a passage and questions designed for that range.
+        </p>
+
+        <div class="choice-grid">
+          ${ageOptions.map(option => `
+            <div class="choice-card ${selectedAge === option.id ? "active" : ""}" onclick="selectAge('${option.id}')">
+              <strong>${option.title}</strong>
+              <span>${option.desc}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h3>Have you been medically diagnosed with a reading-related difficulty or visual reading disorder?</h3>
+          <div class="choice-grid" style="margin-top:12px;">
+            ${diagnosisOptions.map(option => `
+            <div class="choice-card ${selectedDiagnosis === option ? "active" : ""}" onclick='selectDiagnosis(${JSON.stringify(option)})'>
+            <strong>${option}</strong>
+        </div>
+`).join("")}
+          </div>
+        </div>
+
+        <div class="notice">
+          Post-secondary school reading analyzer results may be less accurate due to coping mechanisms developed over time.
+        </div>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevStep()">Back</button>
+          <button class="btn primary" onclick="nextStep()" ${!(selectedAge && selectedDiagnosis) ? "disabled" : ""}>Continue</button>
+        </div>
+      `;
+    }
+
+    function renderSetup() {
+      return `
+        <div class="camera-layout">
+          <div class="camera-card card">
+            <video id="cameraVideo" autoplay playsinline muted></video>
+            <div id="cameraFallback" class="camera-icon">👤</div>
+            <div id="cameraStatus" class="status waiting">Waiting for camera…</div>
+            <div style="margin-top:14px;">
+              <button class="btn primary" onclick="startCameraDetection()">Start Face & Eye Detection</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Before you begin</h3>
+            <ul style="line-height:1.8; color:var(--muted); padding-left:20px; margin:0;">
+              <li>Please sit about an arm’s length from the screen.</li>
+              <li>Make sure there is no bright light shining directly into your face.</li>
+              <li>NORA will switch into a consistent reading mode so you do not need to worry about screen brightness settings during the reading portion.</li>
+              <li>Try to face the screen directly and remain as still as possible while reading.</li>
+              <li>Read naturally. Do not rush.</li>
+            </ul>
+
+            <div class="notice" style="margin-top:16px;">
+              NORA uses browser-based webcam tracking as part of this screening prototype.
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevStep()">Back</button>
+          <button class="btn primary" id="setupContinueBtn" onclick="nextStep()" ${cameraReady ? "" : "disabled"}>Continue</button>
+        </div>
+      `;
+    }
+
+    function renderReadingIntro() {
+      return `
+        <p class="lead">
+          Take a deep breath. <strong>This is not a test.</strong> Read as naturally as you can.
+          The timer will begin when you press <strong>Start Reading</strong>, and you will press <strong>Stop Reading</strong> when you finish the passage.
+        </p>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <strong>Read carefully</strong>
+            Focus on understanding the passage instead of rushing.
+          </div>
+          <div class="step-card">
+            <strong>Stay on the text</strong>
+            Keep your attention on the passage as much as possible.
+          </div>
+          <div class="step-card">
+            <strong>Answer honestly</strong>
+            After reading, complete the comprehension and self-analysis questions as accurately as you can.
+          </div>
+        </div>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevStep()">Back</button>
+          <button class="btn primary" onclick="startReading()">Start Reading</button>
+        </div>
+      `;
+    }
+
+    function renderComprehension() {
+      const questions = comprehensionBank[selectedAge];
+      const q = questions[compIndex];
+
+      return `
+        <div class="question-count">Question ${compIndex + 1} of 15</div>
+
+        <div class="question-box">
+          <h3>${q.q}</h3>
+          <div class="answer-stack">
+            ${q.options.map((opt, i) => `
+              <div class="answer-card ${comprehensionAnswers[compIndex] === i ? "selected" : ""}" onclick="selectComp(${i})">
+                ${opt}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevComp()">Back</button>
+          <button class="btn primary" onclick="nextComp()" ${comprehensionAnswers[compIndex] === undefined ? "disabled" : ""}>
+            ${compIndex === 14 ? "Finish Comprehension" : "Next"}
+          </button>
+        </div>
+      `;
+    }
+
+    function renderSelf() {
+      const q = selfQuestions[selfIndex];
+
+      return `
+        <p class="lead">Please answer these as honestly as possible. Remember there are no wrong answers.</p>
+
+        <div class="question-count">Question ${selfIndex + 1} of 15</div>
+
+        <div class="question-box">
+          <h3>${q.text}</h3>
+          <div class="answer-stack">
+            ${selfOptions.map((opt, i) => `
+              <div class="answer-card ${selfAnswers[selfIndex] === i ? "selected" : ""}" onclick="selectSelf(${i})">
+                ${opt}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="nav-buttons">
+          <button class="btn secondary" onclick="prevSelf()">Back</button>
+          <button class="btn primary" onclick="nextSelf()" ${selfAnswers[selfIndex] === undefined ? "disabled" : ""}>
+            ${selfIndex === 14 ? "Get Results" : "Next"}
+          </button>
+        </div>
+      `;
+    }
+
+    function renderResults() {
+      const results = calculateResults();
+
+      setTimeout(() => saveResults(results), 0);
+
+      return `
+        <div class="results-grid">
+          <div class="score-card">
+            <div style="font-weight:800; color:var(--navy);">NORA Screening Index</div>
+            <div class="score-value">${results.standardScore}</div>
+            <div class="score-label">${results.concernLabel}</div>
+
+            <div class="result-bar">
+              <div class="result-fill" style="width:${Math.max(0, Math.min(100, (results.standardScore - 55) / 0.9))}%"></div>
+            </div>
+
+            <div class="notice" style="margin-top:0;">
+              Average-centered score with higher values indicating higher concern.
+            </div>
+
+            <div class="save-status" id="saveStatus">${saveStatusMessage}</div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="summary-card">
+              <h3>Ocular Readiness Indicator</h3>
+              <p>${results.ocularText}</p>
+            </div>
+
+            <div class="summary-card">
+              <h3>Reading Time</h3>
+              <p>${readingTimeSeconds} seconds recorded for the selected passage.</p>
+            </div>
+
+            <div class="summary-card">
+              <h3>Comprehension</h3>
+              <p>${results.correctCount} out of 15 questions were answered correctly.</p>
+            </div>
+
+            <div class="summary-card">
+              <h3>Self Analysis</h3>
+              <p>Self-reflection responses were included in the final score to capture perceived reading difficulty and confidence.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="notice" style="margin-top:18px;">
+          <strong>Next steps:</strong> A higher concern score suggests that further observation, classroom support, or professional follow-up may be helpful.
+        </div>
+
+        <div class="alert">
+          This is a screening tool and not a medical diagnosis.
+        </div>
+
+        <div class="footer-note">
+          Thank you for participating. This prototype was conducted by Brianne Kniff in support of a Canada-wide screening protocol for early identification of reading challenges, especially around Grade 3.
+        </div>
+
+        <div class="nav-buttons">
+          <div></div>
+          <button class="btn primary" onclick="restartApp()">Start New Screening</button>
+        </div>
+      `;
+    }
+
+    function render() {
+      updateSidebar();
+      updateTopbar();
+
+      const app = document.getElementById("appContent");
+
+      switch (currentStep) {
+        case 0:
+          app.innerHTML = renderWelcome();
+          break;
+        case 1:
+          app.innerHTML = renderEthics();
+          break;
+        case 2:
+          app.innerHTML = renderDyslexia();
+          break;
+        case 3:
+          app.innerHTML = renderEarlyIdentification();
+          break;
+        case 4:
+          app.innerHTML = renderProfile();
+          break;
+        case 5:
+          app.innerHTML = renderSetup();
+          break;
+        case 6:
+          app.innerHTML = renderReadingIntro();
+          break;
+        case 7:
+          app.innerHTML = renderComprehension();
+          break;
+        case 8:
+          app.innerHTML = renderSelf();
+          break;
+        case 9:
+          app.innerHTML = renderResults();
+          break;
+      }
+    }
+
+    function selectAge(id) {
+      selectedAge = id;
+      render();
+    }
+
+    function selectDiagnosis(value) {
+      selectedDiagnosis = value;
+      render();
+    }
+
+    async function startCameraDetection() {
+      const status = document.getElementById("cameraStatus");
+      const video = document.getElementById("cameraVideo");
+      const fallback = document.getElementById("cameraFallback");
+      const continueBtn = document.getElementById("setupContinueBtn");
+
+      status.textContent = "Starting camera…";
+      status.className = "status waiting";
+
+      try {
+        if (!cameraStream) {
+          cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        video.srcObject = cameraStream;
+        fallback.style.display = "none";
+        video.style.display = "block";
+
+        try {
+          await video.play();
+        } catch (_) {}
+
+        startWebgazerIfAvailable();
+        status.textContent = "Looking for face…";
+        status.className = "status waiting";
+
+        setTimeout(() => {
+          cameraReady = true;
+          status.textContent = "Face detected";
+          status.className = "status ready";
+          if (continueBtn) continueBtn.disabled = false;
+        }, 2200);
+
+      } catch (error) {
+        console.error(error);
+        cameraReady = true;
+        video.style.display = "none";
+        fallback.style.display = "grid";
+        status.textContent = "Camera unavailable — demo mode ready";
+        status.className = "status ready";
+        if (continueBtn) continueBtn.disabled = false;
+      }
+    }
+
+    function startWebgazerIfAvailable() {
+      if (webgazerStarted || typeof webgazer === "undefined") return;
+
+      try {
+        webgazer
+          .setGazeListener((data) => {
+            if (!data || currentStep !== 7) return;
+            gazeSamples.push({
+              x: data.x,
+              y: data.y,
+              t: Date.now()
+            });
+          })
+          .showVideo(false)
+          .showPredictionPoints(false)
+          .begin();
+
+        webgazerStarted = true;
+      } catch (error) {
+        console.log("WebGazer unavailable", error);
+      }
+    }
+
+    function startReading() {
+      const passage = passages[selectedAge];
+      if (!passage) return;
+
+      readingStartTime = Date.now();
+      readingBlurCount = 0;
+      gazeSamples = [];
+
+      document.body.insertAdjacentHTML("beforeend", `
+        <div class="reading-screen" id="readingScreen">
+          <div class="reading-top">
+            <div class="reading-title">${passage.title}</div>
+            <div class="timer" id="readingTimer">0s</div>
+          </div>
+
+          <div class="reading-text">${passage.text}</div>
+
+          <div class="reading-actions">
+            <button class="btn primary" onclick="stopReading()">Stop Reading</button>
+          </div>
+        </div>
+      `);
+
+      readingTimerInterval = setInterval(() => {
+        const seconds = Math.floor((Date.now() - readingStartTime) / 1000);
+        const timer = document.getElementById("readingTimer");
+        if (timer) timer.textContent = seconds + "s";
+      }, 1000);
+    }
+
+    function stopReading() {
+      clearInterval(readingTimerInterval);
+      readingTimeSeconds = Math.max(1, Math.floor((Date.now() - readingStartTime) / 1000));
+
+      const screen = document.getElementById("readingScreen");
+      if (screen) screen.remove();
+
+      compIndex = 0;
+      comprehensionAnswers = [];
+      currentStep = 7;
+      render();
+    }
+
+    function selectComp(i) {
+      comprehensionAnswers[compIndex] = i;
+      render();
+    }
+
+    function nextComp() {
+      if (compIndex < 14) {
+        compIndex++;
+      } else {
+        selfIndex = 0;
+        selfAnswers = [];
+        currentStep = 8;
+      }
+      render();
+    }
+
+    function prevComp() {
+      if (compIndex > 0) {
+        compIndex--;
+        render();
+      } else {
+        currentStep = 6;
+        render();
+      }
+    }
+
+    function selectSelf(i) {
+      selfAnswers[selfIndex] = i;
+      render();
+    }
+
+    function nextSelf() {
+      if (selfIndex < 14) {
+        selfIndex++;
+      } else {
+        saveStatusMessage = "Saving results…";
+        currentStep = 9;
+      }
+      render();
+    }
+
+    function prevSelf() {
+      if (selfIndex > 0) {
+        selfIndex--;
+      } else {
+        currentStep = 7;
+      }
+      render();
+    }
+
+    function calculateOcularConcernPercent() {
+      if (!cameraReady) return 55;
+
+      if (!gazeSamples.length) {
+        return 48 + Math.min(10, readingBlurCount * 3);
+      }
+
+      const xs = gazeSamples.map(p => p.x).filter(Number.isFinite);
+      const ys = gazeSamples.map(p => p.y).filter(Number.isFinite);
+
+      if (!xs.length || !ys.length) return 50;
+
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+
+      const spreadX = maxX - minX;
+      const spreadY = maxY - minY;
+
+      let concern = 45;
+      concern += Math.min(20, spreadX / 120);
+      concern += Math.min(15, spreadY / 80);
+      concern += Math.min(10, readingBlurCount * 3);
+
+      return Math.max(35, Math.min(80, concern));
+    }
+
+    function calculateResults() {
+      const questions = comprehensionBank[selectedAge];
+      let correctCount = 0;
+
+      questions.forEach((q, i) => {
+        if (comprehensionAnswers[i] === q.answer) correctCount++;
+      });
+
+      const compPercentConcern = 100 - (correctCount / 15) * 100;
+
+      let selfConcernRaw = 0;
+      selfQuestions.forEach((q, i) => {
+        const response = selfAnswers[i];
+        let concernValue;
+
+        if (q.reverse) {
+          concernValue = response; // strongly agree = 0 concern, strongly disagree = 4 concern
+        } else {
+          concernValue = 4 - response; // strongly agree = 4 concern, strongly disagree = 0 concern
+        }
+
+        selfConcernRaw += concernValue;
+      });
+
+      const selfPercentConcern = (selfConcernRaw / (15 * 4)) * 100;
+
+      const expectedTime = passages[selectedAge].expectedTime;
+      const timeDifference = readingTimeSeconds - expectedTime;
+      let timePercentConcern = 50 + (timeDifference * 0.55);
+      timePercentConcern = Math.max(20, Math.min(90, timePercentConcern));
+
+      const ocularPercentConcern = calculateOcularConcernPercent();
+
+      const overallConcernPercent =
+        (compPercentConcern * 0.45) +
+        (selfPercentConcern * 0.30) +
+        (timePercentConcern * 0.15) +
+        (ocularPercentConcern * 0.10);
+
+      const standardScore = Math.round(Math.max(55, Math.min(145, 100 + (overallConcernPercent - 50) * 0.8)));
+
+      let concernLabel = "Moderate Concern";
+      if (standardScore <= 84) concernLabel = "Low Concern";
+      else if (standardScore <= 99) concernLabel = "Minimal Concern";
+      else if (standardScore <= 114) concernLabel = "Moderate Concern";
+      else if (standardScore <= 129) concernLabel = "High Concern";
+      else concernLabel = "Very High Concern";
+
+      const ocularText = cameraReady
+        ? "Camera-based setup was completed and ocular readiness was included as a lighter-weight screening indicator."
+        : "Camera setup was not fully available, so ocular readiness was weighted neutrally in this result.";
+
+      return {
+        correctCount,
+        compPercentConcern,
+        selfPercentConcern,
+        timePercentConcern,
+        ocularPercentConcern,
+        overallConcernPercent,
+        standardScore,
+        concernLabel,
+        ocularText
+      };
+    }
+
+    async function saveResults(results) {
+      try {
+        const payload = {
+          age_group: selectedAge,
+          diagnosed_reading_impairment: selectedDiagnosis,
+          overall_score: results.standardScore,
+          reading_time_seconds: readingTimeSeconds,
+          comprehension_answers: comprehensionBank[selectedAge].map((q, i) => ({
+            question: q.q,
+            selected_index: comprehensionAnswers[i],
+            selected_answer: q.options[comprehensionAnswers[i]] ?? null,
+            correct_index: q.answer,
+            correct_answer: q.options[q.answer],
+            is_correct: comprehensionAnswers[i] === q.answer
+          })),
+          self_analysis_answers: selfQuestions.map((q, i) => ({
+            question: q.text,
+            selected_index: selfAnswers[i],
+            selected_label: selfOptions[selfAnswers[i]] ?? null
+          }))
+        };
+
+        const { error } = await supabaseClient.from("nora_results").insert([payload]);
+
+        saveStatusMessage = error ? "Result calculated. Database save was not completed." : "Results saved successfully.";
+      } catch (error) {
+        console.error(error);
+        saveStatusMessage = "Result calculated. Database save was not completed.";
+      }
+
+      const saveStatus = document.getElementById("saveStatus");
+      if (saveStatus) saveStatus.textContent = saveStatusMessage;
+    }
+
+    function restartApp() {
+      currentStep = 0;
+      selectedAge = "";
+      selectedDiagnosis = "";
+      readingStartTime = null;
+      readingTimeSeconds = 0;
+      comprehensionAnswers = [];
+      selfAnswers = [];
+      compIndex = 0;
+      selfIndex = 0;
+      cameraReady = false;
+      gazeSamples = [];
+      saveStatusMessage = "Preparing result summary…";
+      render();
+    }
+
+    window.addEventListener("blur", () => {
+      const screen = document.getElementById("readingScreen");
+      if (screen) readingBlurCount++;
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+      if (typeof webgazer !== "undefined") {
+        try { webgazer.end(); } catch (_) {}
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
